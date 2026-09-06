@@ -110,6 +110,7 @@ export default function StudentApp({ account }) {
   const [assignedDays, setAssignedDays] = useState([]);
   const [memorizedIds, setMemorizedIds] = useState([]);
   const [unlockedDays, setUnlockedDays] = useState(new Set());
+  const [selectedDay, setSelectedDay] = useState(null);
   const [reviewDay, setReviewDay] = useState(null);
   const [reviewIndex, setReviewIndex] = useState(0);
   const [vocabMessage, setVocabMessage] = useState("");
@@ -227,7 +228,7 @@ export default function StudentApp({ account }) {
   const totalWords = assignedWords.length;
   const memorizedCount = memorizedIds.length;
   const learningQueue = assignedDays
-    .filter((d) => d.words.some((word) => word.availableDay >= word.day || unlockedDays.has(d.day)))
+    .filter((d) => (selectedDay === null || d.day === selectedDay) && d.words.some((word) => word.availableDay >= word.day || unlockedDays.has(d.day)))
     .flatMap((d) => d.words)
     .filter((word) => word.availableDay >= word.day || unlockedDays.has(word.day))
     .filter((w) => !w.memorized && !memorizedIds.includes(w.id));
@@ -573,7 +574,9 @@ export default function StudentApp({ account }) {
                           title={status === "locked" ? `${d.day}일차 선행학습 열기` : `${d.day}일차`}
                           onClick={() => {
                             if (status === "locked") setUnlockedDays((prev) => new Set([...prev, d.day]));
-                            setReviewDay(d.day);
+                            const hasUnmemorizedWords = d.words.some((word) => !word.memorized && !memorizedIds.includes(word.id));
+                            setSelectedDay(d.day);
+                            setReviewDay(hasUnmemorizedWords ? null : d.day);
                             setReviewIndex(0);
                             setShowSuccess(false);
                           }}
