@@ -108,6 +108,7 @@ export default function StudentApp({ account }) {
   const [assignedWords, setAssignedWords] = useState([]);
   const [assignedDays, setAssignedDays] = useState([]);
   const [memorizedIds, setMemorizedIds] = useState([]);
+  const [unlockedDays, setUnlockedDays] = useState(new Set());
   const [showSuccess, setShowSuccess] = useState(false);
 
   const [testPhotoUrl, setTestPhotoUrl] = useState(null);
@@ -222,9 +223,9 @@ export default function StudentApp({ account }) {
   const totalWords = assignedWords.length;
   const memorizedCount = memorizedIds.length;
   const queue = assignedDays
-    .filter((d) => d.words.some((word) => word.availableDay >= word.day))
+    .filter((d) => d.words.some((word) => word.availableDay >= word.day || unlockedDays.has(d.day)))
     .flatMap((d) => d.words)
-    .filter((word) => word.availableDay >= word.day)
+    .filter((word) => word.availableDay >= word.day || unlockedDays.has(word.day))
     .filter((w) => !memorizedIds.includes(w.id));
   const availableVocabDay = assignedWords.length > 0 ? Math.max(...assignedWords.map((word) => word.availableDay)) : 0;
   const currentWord = queue[0];
@@ -389,7 +390,7 @@ export default function StudentApp({ account }) {
         .segmented button.active { background: var(--surface); color: var(--ink); }
 
         .day-dots { display: flex; gap: 7px; margin: 20px 0 4px; justify-content: center; }
-        .day-dot { width: 27px; height: 27px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; }
+        .day-dot { width: 27px; height: 27px; border: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font: inherit; font-size: 10px; font-weight: 700; color: #fff; cursor: pointer; padding: 0; }
         .dd-done { background: var(--good); }
         .dd-active { background: var(--accent); }
         .dd-locked { background: var(--line); color: var(--ink-soft); }
@@ -536,11 +537,22 @@ export default function StudentApp({ account }) {
                   <div className="day-dots">
                     {assignedDays.map((d) => {
                       const doneCount = d.words.filter((w) => memorizedIds.includes(w.id)).length;
-                      const status = d.day > availableVocabDay ? "locked" : doneCount === d.words.length ? "done" : "active";
+                      const isUnlocked = d.day <= availableVocabDay || unlockedDays.has(d.day);
+                      const status = !isUnlocked ? "locked" : doneCount === d.words.length ? "done" : "active";
                       return (
-                        <div key={d.day} className={`day-dot dd-${status}`} title={`${d.day}일차`}>
+                        <button
+                          key={d.day}
+                          type="button"
+                          className={`day-dot dd-${status}`}
+                          title={status === "locked" ? `${d.day}일차 선행학습 열기` : `${d.day}일차`}
+                          onClick={() => {
+                            if (status === "locked") {
+                              setUnlockedDays((prev) => new Set([...prev, d.day]));
+                            }
+                          }}
+                        >
                           {status === "locked" ? <Lock size={11} /> : `D${d.day}`}
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
