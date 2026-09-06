@@ -40,7 +40,6 @@ function chunkIntoDays(pool, perDay = 7) {
   return days;
 }
 const vocabDays = chunkIntoDays(vocabPool, 7);
-const TODAY_DAY = 3;
 const initialMemorized = [
   ...vocabDays[0].words.map((w) => w.id),
   ...vocabDays[1].words.map((w) => w.id),
@@ -58,6 +57,14 @@ function makeInitialHwState() {
     state[a.id] = { answers: Array(a.totalQuestions).fill(null), submitted: false };
   });
   return state;
+}
+
+function daysSinceUpload(createdAt) {
+  const uploadDate = new Date(createdAt);
+  const today = new Date();
+  const uploadDay = new Date(uploadDate.getFullYear(), uploadDate.getMonth(), uploadDate.getDate());
+  const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.max(0, Math.floor((todayDay - uploadDay) / (24 * 60 * 60 * 1000)));
 }
 
 /* ---------- notices (posted by admin) ---------- */
@@ -180,6 +187,7 @@ export default function StudentApp({ account }) {
         en: word.english,
         kr: word.meaning,
         day: word.day_number,
+        availableDay: daysSinceUpload(word.vocab_set_created_at),
         memorized: word.memorized,
       }));
       setAssignedWords(words);
@@ -214,9 +222,11 @@ export default function StudentApp({ account }) {
   const totalWords = assignedWords.length;
   const memorizedCount = memorizedIds.length;
   const queue = assignedDays
-    .filter((d) => d.day <= TODAY_DAY)
+    .filter((d) => d.words.some((word) => word.availableDay >= word.day))
     .flatMap((d) => d.words)
+    .filter((word) => word.availableDay >= word.day)
     .filter((w) => !memorizedIds.includes(w.id));
+  const availableVocabDay = assignedWords.length > 0 ? Math.max(...assignedWords.map((word) => word.availableDay)) : 0;
   const currentWord = queue[0];
 
   const hwTotalCount = homeworkAssignments.length;
@@ -526,7 +536,7 @@ export default function StudentApp({ account }) {
                   <div className="day-dots">
                     {assignedDays.map((d) => {
                       const doneCount = d.words.filter((w) => memorizedIds.includes(w.id)).length;
-                      const status = d.day > TODAY_DAY ? "locked" : doneCount === d.words.length ? "done" : "active";
+                      const status = d.day > availableVocabDay ? "locked" : doneCount === d.words.length ? "done" : "active";
                       return (
                         <div key={d.day} className={`day-dot dd-${status}`} title={`${d.day}일차`}>
                           {status === "locked" ? <Lock size={11} /> : `D${d.day}`}

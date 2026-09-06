@@ -10,7 +10,8 @@ returns table (
   english text,
   meaning text,
   day_number smallint,
-  memorized boolean
+  memorized boolean,
+  vocab_set_created_at timestamptz
 )
 language sql
 security definer
@@ -21,8 +22,10 @@ as $$
     w.english,
     w.meaning,
     w.day_number,
-    coalesce(progress.memorized, false)
+    coalesce(progress.memorized, false),
+    sets.created_at
   from public.vocab_assignments assignment
+  join public.vocab_sets sets on sets.id = assignment.vocab_set_id
   join public.vocab_words w on w.vocab_set_id = assignment.vocab_set_id
   join public.students student on student.id = assignment.student_id
   left join public.vocab_progress progress
