@@ -34,12 +34,12 @@ const rawWords = [
 ];
 const vocabPool = rawWords.map(([en, kr], i) => ({ id: i + 1, en, kr }));
 
-function chunkIntoDays(pool, perDay = 7) {
+function chunkIntoDays(pool, perDay = 5) {
   const days = [];
   for (let d = 0; d < 7; d++) days.push({ day: d + 1, words: pool.slice(d * perDay, d * perDay + perDay) });
   return days;
 }
-const vocabDays = chunkIntoDays(vocabPool, 7);
+const vocabDays = chunkIntoDays(vocabPool, 5);
 const initialMemorized = [
   ...vocabDays[0].words.map((w) => w.id),
   ...vocabDays[1].words.map((w) => w.id),
@@ -109,6 +109,8 @@ export default function StudentApp({ account }) {
   const [assignedDays, setAssignedDays] = useState([]);
   const [memorizedIds, setMemorizedIds] = useState([]);
   const [unlockedDays, setUnlockedDays] = useState(new Set());
+  const [reviewDay, setReviewDay] = useState(null);
+  const [reviewIndex, setReviewIndex] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const [testPhotoUrl, setTestPhotoUrl] = useState(null);
@@ -222,13 +224,15 @@ export default function StudentApp({ account }) {
 
   const totalWords = assignedWords.length;
   const memorizedCount = memorizedIds.length;
-  const queue = assignedDays
+  const learningQueue = assignedDays
     .filter((d) => d.words.some((word) => word.availableDay >= word.day || unlockedDays.has(d.day)))
     .flatMap((d) => d.words)
     .filter((word) => word.availableDay >= word.day || unlockedDays.has(word.day))
     .filter((w) => !memorizedIds.includes(w.id));
+  const reviewQueue = reviewDay === null ? [] : (assignedDays.find((day) => day.day === reviewDay)?.words || []);
+  const queue = reviewDay === null ? learningQueue : reviewQueue;
   const availableVocabDay = assignedWords.length > 0 ? Math.max(...assignedWords.map((word) => word.availableDay)) : 0;
-  const currentWord = queue[0];
+  const currentWord = reviewDay === null ? queue[0] : queue[reviewIndex];
 
   const hwTotalCount = homeworkAssignments.length;
   const hwCompletedCount = Object.values(hwState).filter((s) => s.submitted).length;
@@ -237,6 +241,16 @@ export default function StudentApp({ account }) {
   const unreadNoticeCount = notices.filter((n) => !readNoticeIds.has(n.id)).length;
 
   async function handleNextWord() {
+    if (reviewDay !== null) {
+      if (reviewIndex >= reviewQueue.length - 1) {
+        setReviewDay(null);
+        setReviewIndex(0);
+        setShowSuccess(true);
+      } else {
+        setReviewIndex((prev) => prev + 1);
+      }
+      return;
+    }
     const wasLast = queue.length === 1;
     const { error } = await supabase.rpc("mark_vocab_word", {
       p_student_id: account.id,
@@ -546,9 +560,10 @@ export default function StudentApp({ account }) {
                           className={`day-dot dd-${status}`}
                           title={status === "locked" ? `${d.day}일차 선행학습 열기` : `${d.day}일차`}
                           onClick={() => {
-                            if (status === "locked") {
-                              setUnlockedDays((prev) => new Set([...prev, d.day]));
-                            }
+                            if (status === "locked") setUnlockedDays((prev) => new Set([...prev, d.day]));
+                            setReviewDay(d.day);
+                            setReviewIndex(0);
+                            setShowSuccess(false);
                           }}
                         >
                           {status === "locked" ? <Lock size={11} /> : `D${d.day}`}

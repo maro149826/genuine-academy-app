@@ -1,4 +1,16 @@
--- Run this after 008_parent_report.sql.
+-- Run this after 015_vocab_unlock_by_upload_date.sql.
+-- Assign five words per day so a 30-word upload has D1 through D6.
+
+with numbered_words as (
+  select
+    id,
+    ceil(row_number() over (partition by vocab_set_id order by created_at, id) / 5.0)::smallint as new_day_number
+  from public.vocab_words
+)
+update public.vocab_words words
+set day_number = numbered_words.new_day_number
+from numbered_words
+where words.id = numbered_words.id;
 
 create or replace function public.admin_create_vocab_set(
   p_name text,
