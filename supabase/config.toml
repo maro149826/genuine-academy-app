@@ -1,0 +1,8 @@
+[functions.submit-vocab-test]
+verify_jwt = false
+
+[functions.grade-vocab-test]
+verify_jwt = true
+
+[functions.cleanup-vocab-tests]
+verify_jwt = false

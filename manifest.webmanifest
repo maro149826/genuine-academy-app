@@ -1,0 +1,9 @@
+{
+  "name": "제뉴인학원 학생 앱",
+  "short_name": "제뉴인학원",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F2EFE6",
+  "theme_color": "#1C2440",
+  "lang": "ko"
+}
