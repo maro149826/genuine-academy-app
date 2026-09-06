@@ -242,6 +242,7 @@ export default function StudentApp({ account }) {
   const unreadNoticeCount = notices.filter((n) => !readNoticeIds.has(n.id)).length;
 
   async function handleNextWord() {
+    if (!currentWord) return;
     if (reviewDay !== null) {
       if (reviewIndex >= reviewQueue.length - 1) {
         setReviewDay(null);
@@ -253,14 +254,17 @@ export default function StudentApp({ account }) {
       return;
     }
     const wasLast = queue.length === 1;
+    setMemorizedIds((prev) => (prev.includes(currentWord.id) ? prev : [...prev, currentWord.id]));
     const { error } = await supabase.rpc("mark_vocab_word", {
       p_student_id: account.id,
       p_name: account.name,
       p_phone: account.phone,
       p_word_id: currentWord.id,
     });
-    if (error) return;
-    setMemorizedIds((prev) => [...prev, currentWord.id]);
+    if (error) {
+      setMemorizedIds((prev) => prev.filter((id) => id !== currentWord.id));
+      return;
+    }
     if (wasLast) setShowSuccess(true);
   }
   function handleTestPhotoChange(e) {
