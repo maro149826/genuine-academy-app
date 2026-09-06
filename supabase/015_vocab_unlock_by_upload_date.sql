@@ -37,7 +37,7 @@ as $$
     and student.name = trim(p_name)
     and student.phone = trim(p_phone)
     and student.status = 'approved'
-  order by w.day_number, w.created_at, w.id;
+  order by w.word_order, w.id;
 $$;
 
 revoke all on function public.get_student_vocab(uuid, text, text) from public;

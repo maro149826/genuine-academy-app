@@ -1,27 +1,24 @@
--- Run this after 015_vocab_unlock_by_upload_date.sql.
--- Keep every vocabulary set within D1 through D6.
+-- Run this after 016_vocab_six_day_schedule.sql.
+-- Preserve CSV order when students view assigned words.
 
 alter table public.vocab_words
-  drop constraint if exists vocab_words_day_number_check;
+  add column if not exists word_order integer;
 
 with numbered_words as (
   select
     id,
-    row_number() over (partition by vocab_set_id order by created_at, id)::integer as new_word_order,
-    ceil(
-      row_number() over (partition by vocab_set_id order by created_at, id) * 6.0
-      / count(*) over (partition by vocab_set_id)
-    )::smallint as new_day_number
+    row_number() over (partition by vocab_set_id order by created_at, id)::integer as new_word_order
   from public.vocab_words
 )
 update public.vocab_words words
-set word_order = numbered_words.new_word_order,
-    day_number = numbered_words.new_day_number
+set word_order = numbered_words.new_word_order
 from numbered_words
-where words.id = numbered_words.id;
+where words.id = numbered_words.id
+  and words.word_order is null;
 
 alter table public.vocab_words
-  add constraint vocab_words_day_number_check check (day_number between 1 and 6);
+  alter column word_order set default 1,
+  alter column word_order set not null;
 
 create or replace function public.admin_create_vocab_set(
   p_name text,
@@ -78,3 +75,43 @@ $$;
 
 revoke all on function public.admin_create_vocab_set(text, jsonb, uuid[]) from public;
 grant execute on function public.admin_create_vocab_set(text, jsonb, uuid[]) to authenticated;
+
+create or replace function public.get_student_vocab(
+  p_student_id uuid,
+  p_name text,
+  p_phone text
+)
+returns table (
+  id uuid,
+  english text,
+  meaning text,
+  day_number smallint,
+  memorized boolean,
+  vocab_set_created_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    w.id,
+    w.english,
+    w.meaning,
+    w.day_number,
+    coalesce(progress.memorized, false),
+    sets.created_at
+  from public.vocab_assignments assignment
+  join public.vocab_sets sets on sets.id = assignment.vocab_set_id
+  join public.vocab_words w on w.vocab_set_id = assignment.vocab_set_id
+  join public.students student on student.id = assignment.student_id
+  left join public.vocab_progress progress
+    on progress.student_id = student.id and progress.word_id = w.id
+  where student.id = p_student_id
+    and student.name = trim(p_name)
+    and student.phone = trim(p_phone)
+    and student.status = 'approved'
+  order by w.word_order, w.id;
+$$;
+
+revoke all on function public.get_student_vocab(uuid, text, text) from public;
+grant execute on function public.get_student_vocab(uuid, text, text) to anon, authenticated;

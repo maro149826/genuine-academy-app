@@ -55,6 +55,7 @@ create table if not exists public.vocab_words (
   vocab_set_id uuid not null references public.vocab_sets(id) on delete cascade,
   english text not null,
   meaning text not null,
+  word_order integer not null default 1,
   day_number smallint not null check (day_number between 1 and 6),
   created_at timestamptz not null default now()
 );
