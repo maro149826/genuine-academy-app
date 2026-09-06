@@ -114,6 +114,7 @@ export default function StudentApp({ account }) {
   const [reviewDay, setReviewDay] = useState(null);
   const [reviewIndex, setReviewIndex] = useState(0);
   const [vocabMessage, setVocabMessage] = useState("");
+  const [sessionRemaining, setSessionRemaining] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const [testPhotoUrl, setTestPhotoUrl] = useState(null);
@@ -234,7 +235,8 @@ export default function StudentApp({ account }) {
     .filter((w) => !w.memorized && !memorizedIds.includes(w.id));
   const reviewQueue = reviewDay === null ? [] : (assignedDays.find((day) => day.day === reviewDay)?.words || []);
   const queue = reviewDay === null ? learningQueue : reviewQueue;
-  const remainingCount = reviewDay === null ? queue.length : Math.max(0, queue.length - reviewIndex);
+  const calculatedRemaining = reviewDay === null ? queue.length : Math.max(0, queue.length - reviewIndex);
+  const remainingCount = sessionRemaining === null ? calculatedRemaining : sessionRemaining;
   const availableVocabDay = assignedWords.length > 0 ? Math.max(...assignedWords.map((word) => word.availableDay)) : 0;
   const currentWord = reviewDay === null ? queue[0] : queue[reviewIndex];
 
@@ -247,6 +249,7 @@ export default function StudentApp({ account }) {
   async function handleNextWord() {
     if (!currentWord) return;
     setVocabMessage("");
+    setSessionRemaining((prev) => Math.max(0, (prev === null ? calculatedRemaining : prev) - 1));
     if (reviewDay !== null) {
       if (reviewIndex >= reviewQueue.length - 1) {
         setReviewDay(null);
@@ -579,6 +582,7 @@ export default function StudentApp({ account }) {
                             setSelectedDay(d.day);
                             setReviewDay(hasUnmemorizedWords ? null : d.day);
                             setReviewIndex(0);
+                            setSessionRemaining(null);
                             setShowSuccess(false);
                           }}
                         >
