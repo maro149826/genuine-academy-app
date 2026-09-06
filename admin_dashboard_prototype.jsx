@@ -503,6 +503,14 @@ export default function AdminDashboard() {
 
   async function deleteVocabSubmission(id) {
     if (!window.confirm("이 시험 제출 기록을 삭제할까요?")) return;
+    const test = vocabTests.find((item) => item.id === id);
+    if (test?.photo_path) {
+      const { error: photoError } = await supabase.storage.from("vocab-tests").remove([test.photo_path]);
+      if (photoError) {
+        showToast("시험 사진을 삭제하지 못했어요");
+        return;
+      }
+    }
     const { error } = await supabase.from("vocab_test_submissions").delete().eq("id", id);
     if (error) {
       showToast("시험 제출 기록을 삭제하지 못했어요");
