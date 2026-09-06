@@ -234,6 +234,7 @@ export default function StudentApp({ account }) {
     .filter((w) => !w.memorized && !memorizedIds.includes(w.id));
   const reviewQueue = reviewDay === null ? [] : (assignedDays.find((day) => day.day === reviewDay)?.words || []);
   const queue = reviewDay === null ? learningQueue : reviewQueue;
+  const remainingCount = reviewDay === null ? queue.length : Math.max(0, queue.length - reviewIndex);
   const availableVocabDay = assignedWords.length > 0 ? Math.max(...assignedWords.map((word) => word.availableDay)) : 0;
   const currentWord = reviewDay === null ? queue[0] : queue[reviewIndex];
 
@@ -549,7 +550,7 @@ export default function StudentApp({ account }) {
                     </div>
                   ) : currentWord ? (
                     <div className="word-card">
-                      <div className="progress">오늘 {queue.length}개 남음</div>
+                      <div className="progress">오늘 {remainingCount}개 남음</div>
                       <div className="en">{currentWord.en}</div>
                       <div className="kr">{currentWord.kr}</div>
                       <button className="next-btn" onClick={handleNextWord}>외웠어요, 다음</button>
