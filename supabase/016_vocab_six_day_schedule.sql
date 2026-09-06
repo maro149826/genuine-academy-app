@@ -1,6 +1,12 @@
 -- Run this after 015_vocab_unlock_by_upload_date.sql.
 -- Assign five words per day so a 30-word upload has D1 through D6.
 
+alter table public.vocab_words
+  drop constraint if exists vocab_words_day_number_check;
+
+alter table public.vocab_words
+  add constraint vocab_words_day_number_check check (day_number between 1 and 60);
+
 with numbered_words as (
   select
     id,
