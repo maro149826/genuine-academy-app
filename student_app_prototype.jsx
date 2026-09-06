@@ -112,6 +112,7 @@ export default function StudentApp({ account }) {
   const [unlockedDays, setUnlockedDays] = useState(new Set());
   const [reviewDay, setReviewDay] = useState(null);
   const [reviewIndex, setReviewIndex] = useState(0);
+  const [vocabMessage, setVocabMessage] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
 
   const [testPhotoUrl, setTestPhotoUrl] = useState(null);
@@ -243,6 +244,7 @@ export default function StudentApp({ account }) {
 
   async function handleNextWord() {
     if (!currentWord) return;
+    setVocabMessage("");
     if (reviewDay !== null) {
       if (reviewIndex >= reviewQueue.length - 1) {
         setReviewDay(null);
@@ -262,7 +264,7 @@ export default function StudentApp({ account }) {
       p_word_id: currentWord.id,
     });
     if (error) {
-      setMemorizedIds((prev) => prev.filter((id) => id !== currentWord.id));
+      setVocabMessage(`진행 상황을 저장하지 못했어요: ${error.message || "잠시 후 다시 시도해주세요."}`);
       return;
     }
     if (wasLast) setShowSuccess(true);
@@ -529,6 +531,7 @@ export default function StudentApp({ account }) {
 
               {vocabSub === "memorize" && (
                 <>
+                  {vocabMessage && <p className="form-message" style={{ margin: "0 0 12px", textAlign: "center" }}>{vocabMessage}</p>}
                   {showSuccess ? (
                     <div className="status-block">
                       <Sparkles size={40} className="icon" />
