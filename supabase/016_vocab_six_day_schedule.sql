@@ -1,22 +1,25 @@
 -- Run this after 015_vocab_unlock_by_upload_date.sql.
--- Assign five words per day so a 30-word upload has D1 through D6.
+-- Keep every vocabulary set within D1 through D6.
 
 alter table public.vocab_words
   drop constraint if exists vocab_words_day_number_check;
 
-alter table public.vocab_words
-  add constraint vocab_words_day_number_check check (day_number between 1 and 60);
-
 with numbered_words as (
   select
     id,
-    ceil(row_number() over (partition by vocab_set_id order by created_at, id) / 5.0)::smallint as new_day_number
+    ceil(
+      row_number() over (partition by vocab_set_id order by created_at, id) * 6.0
+      / count(*) over (partition by vocab_set_id)
+    )::smallint as new_day_number
   from public.vocab_words
 )
 update public.vocab_words words
 set day_number = numbered_words.new_day_number
 from numbered_words
 where words.id = numbered_words.id;
+
+alter table public.vocab_words
+  add constraint vocab_words_day_number_check check (day_number between 1 and 6);
 
 create or replace function public.admin_create_vocab_set(
   p_name text,
@@ -50,7 +53,7 @@ begin
     new_vocab_set_id,
     trim(word->>'en'),
     trim(word->>'kr'),
-    ceil(item.ordinality / 5.0)::smallint
+    ceil(item.ordinality * 6.0 / word_count)::smallint
   from jsonb_array_elements(p_words) with ordinality as item(word, ordinality)
   where trim(word->>'en') <> '' and trim(word->>'kr') <> '';
 

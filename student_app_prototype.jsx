@@ -34,12 +34,13 @@ const rawWords = [
 ];
 const vocabPool = rawWords.map(([en, kr], i) => ({ id: i + 1, en, kr }));
 
-function chunkIntoDays(pool, perDay = 5) {
-  const days = [];
-  for (let d = 0; d < 7; d++) days.push({ day: d + 1, words: pool.slice(d * perDay, d * perDay + perDay) });
-  return days;
+function chunkIntoDays(pool) {
+  return Array.from({ length: Math.min(6, pool.length) }, (_, index) => ({
+    day: index + 1,
+    words: pool.filter((_, wordIndex) => Math.ceil((wordIndex + 1) * 6 / pool.length) === index + 1),
+  }));
 }
-const vocabDays = chunkIntoDays(vocabPool, 5);
+const vocabDays = chunkIntoDays(vocabPool);
 const initialMemorized = [
   ...vocabDays[0].words.map((w) => w.id),
   ...vocabDays[1].words.map((w) => w.id),
