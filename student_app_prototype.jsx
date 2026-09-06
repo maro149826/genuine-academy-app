@@ -242,8 +242,8 @@ export default function StudentApp({ account }) {
 
   const hwTotalCount = homeworkAssignments.length;
   const hwCompletedCount = Object.values(hwState).filter((s) => s.submitted).length;
-  const ringValue = memorizedCount + hwCompletedCount;
-  const ringMax = totalWords + hwTotalCount;
+  const ringValue = memorizedCount + hwCompletedCount + (testSubmitted ? 1 : 0);
+  const ringMax = totalWords + hwTotalCount + 1;
   const unreadNoticeCount = notices.filter((n) => !readNoticeIds.has(n.id)).length;
 
   async function handleNextWord() {
@@ -346,9 +346,13 @@ export default function StudentApp({ account }) {
   }
 
   let homeSubtext;
+  const hasCompletedWeeklyGoal = queue.length === 0
+    && testSubmitted
+    && hwCompletedCount === hwTotalCount;
   if (queue.length > 0) homeSubtext = `오늘 ${queue.length}개만 더 외우면 끝이에요`;
+  else if (!testSubmitted) homeSubtext = "단어시험을 제출하면 목표에 가까워져요";
   else if (hwCompletedCount < hwTotalCount) homeSubtext = `숙제 ${hwTotalCount - hwCompletedCount}개가 남았어요`;
-  else homeSubtext = "이번 주 목표를 모두 달성했어요";
+  else if (hasCompletedWeeklyGoal) homeSubtext = "이번 주 목표를 모두 달성했어요";
 
   const activeAssignment = hwView ? homeworkAssignments.find((a) => a.id === hwView) : null;
 
