@@ -107,6 +107,7 @@ export default function StudentApp({ account }) {
   const [testPhotoFile, setTestPhotoFile] = useState(null);
   const [testSubmitted, setTestSubmitted] = useState(false);
   const [testMessage, setTestMessage] = useState("");
+  const [vocabTestResult, setVocabTestResult] = useState(null);
 
   const [homeworkAssignments, setHomeworkAssignments] = useState([]);
   const [hwState, setHwState] = useState({});
@@ -122,6 +123,23 @@ export default function StudentApp({ account }) {
     const t2 = setTimeout(() => setSplashPhase("done"), 1400);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function loadVocabTestResult() {
+      const { data } = await supabase.rpc("get_student_vocab_test_result", {
+        p_student_id: account.id,
+        p_name: account.name,
+        p_phone: account.phone,
+      });
+      if (!active) return;
+      const result = data?.[0] || null;
+      setVocabTestResult(result);
+      setTestSubmitted(Boolean(result));
+    }
+    loadVocabTestResult();
+    return () => { active = false; };
+  }, [account.id, account.name, account.phone]);
 
   useEffect(() => {
     let active = true;
@@ -239,11 +257,13 @@ export default function StudentApp({ account }) {
       return;
     }
     setTestSubmitted(true);
+    setVocabTestResult(null);
   }
   function retakeTestPhoto() {
     setTestPhotoUrl(null);
     setTestPhotoFile(null);
     setTestSubmitted(false);
+    setVocabTestResult(null);
     setTestMessage("");
   }
   function selectHwAnswer(assignmentId, qIdx, optIdx) {
@@ -449,7 +469,11 @@ export default function StudentApp({ account }) {
               <div className="stat-row">
                 <div className="stat-col" onClick={() => { setTab("vocab"); setVocabSub("test"); }}>
                   <div className="stat-label">단어시험</div>
-                  <div className="stat-value">{testSubmitted ? "채점 대기" : "미제출"}</div>
+                  <div className="stat-value">
+                    {vocabTestResult?.status === "graded"
+                      ? `${vocabTestResult.score}/${vocabTestResult.total}점`
+                      : testSubmitted ? "채점 대기" : "미제출"}
+                  </div>
                 </div>
                 <div className="stat-col" onClick={() => { setTab("homework"); setHwView(null); }}>
                   <div className="stat-label">숙제</div>
@@ -537,9 +561,23 @@ export default function StudentApp({ account }) {
                       )}
                       <input id="testPhotoInput" type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleTestPhotoChange} />
                     </>
+                  ) : vocabTestResult?.status === "graded" ? (
+                    <div style={{ textAlign: "center" }}>
+                      <div className="status-block" style={{ padding: "22px 0 16px" }}>
+                        <Check size={30} className="icon" />
+                        <h3>채점 결과가 나왔어요</h3>
+                        <div style={{ fontSize: 30, fontWeight: 800, color: "var(--ink)", margin: "10px 0 4px" }}>
+                          {vocabTestResult.score}/{vocabTestResult.total}
+                        </div>
+                        <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: 0 }}>
+                          {Math.round((vocabTestResult.score / vocabTestResult.total) * 100)}점
+                        </p>
+                      </div>
+                      <button className="text-link" onClick={retakeTestPhoto}>다시 제출하기</button>
+                    </div>
                   ) : (
                     <div style={{ textAlign: "center" }}>
-                      <img src={testPhotoUrl} alt="제출한 시험지" className="photo-preview" style={{ maxWidth: 200, margin: "0 auto 16px" }} />
+                      {testPhotoUrl && <img src={testPhotoUrl} alt="제출한 시험지" className="photo-preview" style={{ maxWidth: 200, margin: "0 auto 16px" }} />}
                       <div className="status-line"><Clock size={13} /> 채점 대기 중</div>
                       <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: 0 }}>조교 선생님이 확인 후 점수를 알려드려요</p>
                       <button className="text-link" onClick={retakeTestPhoto}>다시 제출하기</button>
