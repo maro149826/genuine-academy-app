@@ -230,7 +230,7 @@ export default function StudentApp({ account }) {
     .filter((d) => d.words.some((word) => word.availableDay >= word.day || unlockedDays.has(d.day)))
     .flatMap((d) => d.words)
     .filter((word) => word.availableDay >= word.day || unlockedDays.has(word.day))
-    .filter((w) => !memorizedIds.includes(w.id));
+    .filter((w) => !w.memorized && !memorizedIds.includes(w.id));
   const reviewQueue = reviewDay === null ? [] : (assignedDays.find((day) => day.day === reviewDay)?.words || []);
   const queue = reviewDay === null ? learningQueue : reviewQueue;
   const availableVocabDay = assignedWords.length > 0 ? Math.max(...assignedWords.map((word) => word.availableDay)) : 0;
@@ -257,6 +257,10 @@ export default function StudentApp({ account }) {
     }
     const wasLast = queue.length === 1;
     setMemorizedIds((prev) => (prev.includes(currentWord.id) ? prev : [...prev, currentWord.id]));
+    setAssignedDays((prev) => prev.map((day) => ({
+      ...day,
+      words: day.words.map((word) => word.id === currentWord.id ? { ...word, memorized: true } : word),
+    })));
     const { error } = await supabase.rpc("mark_vocab_word", {
       p_student_id: account.id,
       p_name: account.name,
