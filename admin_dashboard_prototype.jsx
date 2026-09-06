@@ -126,6 +126,7 @@ export default function AdminDashboard() {
   const [vocabSetName, setVocabSetName] = useState("");
   const [vocabWords, setVocabWords] = useState([]);
   const [vocabSelected, setVocabSelected] = useState(new Set());
+  const [expandedVocabSetId, setExpandedVocabSetId] = useState(null);
 
   const [homeworkDefs, setHomeworkDefs] = useState([{ id: "h1", title: "문법 워크북 UNIT 4", totalQuestions: 12, createdAt: "8월 20일", assignedCount: 3 }]);
   const [hwTitle, setHwTitle] = useState("");
@@ -192,7 +193,7 @@ export default function AdminDashboard() {
     async function loadVocabSets() {
       const { data, error } = await supabase
         .from("vocab_sets")
-        .select("id, name, created_at, vocab_assignments(count)")
+        .select("id, name, created_at, vocab_assignments(student_id, students(name))")
         .order("created_at", { ascending: false });
       if (error) {
         showToast("단어 업로드 내역을 불러오지 못했어요");
@@ -202,7 +203,8 @@ export default function AdminDashboard() {
         id: item.id,
         name: item.name,
         createdAt: new Date(item.created_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" }),
-        assignedCount: item.vocab_assignments?.[0]?.count || 0,
+        assignedNames: (item.vocab_assignments || []).map((assignment) => assignment.students?.name).filter(Boolean),
+        assignedCount: item.vocab_assignments?.length || 0,
       })));
     }
     loadVocabSets();
@@ -421,7 +423,13 @@ export default function AdminDashboard() {
       showToast(error.message.includes("no_approved_students") ? "승인된 학생을 선택해주세요" : "단어를 저장하지 못했어요");
       return;
     }
-    setVocabSets((prev) => [{ id: vocabSetId, name: vocabSetName, createdAt: todayStr(), assignedCount: vocabSelected.size }, ...prev]);
+    setVocabSets((prev) => [{
+      id: vocabSetId,
+      name: vocabSetName,
+      createdAt: todayStr(),
+      assignedCount: vocabSelected.size,
+      assignedNames: students.filter((student) => vocabSelected.has(student.id)).map((student) => student.name),
+    }, ...prev]);
     showToast(`${vocabSelected.size}명에게 배정했어요`);
     setVocabFileName(""); setVocabSetName(""); setVocabWords([]); setVocabSelected(new Set());
   }
@@ -611,6 +619,9 @@ export default function AdminDashboard() {
         .history-row .h-name { font-size: 13.5px; font-weight: 700; color: var(--ink); }
         .history-row .h-meta { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
         .history-row .h-count { font-size: 12.5px; font-weight: 700; color: var(--accent); }
+        .history-row .h-count-button { background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; }
+        .assigned-students { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+        .assigned-students span { font-size: 11.5px; color: var(--ink); background: var(--accent-soft); border-radius: 999px; padding: 4px 8px; }
         .qr-panel { display: flex; gap: 16px; align-items: flex-start; padding: 14px 2px 20px; border-bottom: 1px solid var(--line); }
         .qr-panel img { border: 1px solid var(--line); border-radius: 8px; flex-shrink: 0; background: #fff; padding: 6px; }
         .qr-info { flex: 1; }
@@ -756,9 +767,23 @@ export default function AdminDashboard() {
               <div className="section-label">업로드 내역</div>
               {vocabSets.map((v) => (
                 <div className="history-row" key={v.id}>
-                  <div><div className="h-name">{v.name}</div><div className="h-meta">{v.createdAt} 업로드</div></div>
+                  <div style={{ flex: 1 }}>
+                    <div className="h-name">{v.name}</div>
+                    <div className="h-meta">{v.createdAt} 업로드</div>
+                    {expandedVocabSetId === v.id && v.assignedNames?.length > 0 && (
+                      <div className="assigned-students">
+                        {v.assignedNames.map((name) => <span key={name}>{name}</span>)}
+                      </div>
+                    )}
+                  </div>
                   <div className="actions">
-                    <div className="h-count">{v.assignedCount}명에게 배정됨</div>
+                    <button
+                      className="h-count h-count-button"
+                      type="button"
+                      onClick={() => setExpandedVocabSetId((prev) => (prev === v.id ? null : v.id))}
+                    >
+                      {v.assignedCount}명에게 배정됨
+                    </button>
                     <button className="n-del" onClick={() => deleteVocabSet(v.id)} aria-label="삭제"><X size={15} /></button>
                   </div>
                 </div>
